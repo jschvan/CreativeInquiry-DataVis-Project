@@ -1,6 +1,5 @@
 import cv2
 import os
-import csv #can i delete?
 import pandas as pd
 import collections
 import numpy as np
@@ -27,8 +26,8 @@ def csv_scanner(file_name):
         template_cell_dat = cell_dat(
             row['pos_x'],
             row['pos_y'],
-            row['dt8_n0_dx'],
-            row['dt8_n0_dy']
+            row['dt4_n0_dx'],
+            row['dt4_n0_dy']
         )
         frame_cell_dict[key].append(template_cell_dat)
     print("scan complete for " + file_name)
@@ -41,7 +40,7 @@ parent_directory = os.path.join(os.getcwd(), "..")
 image_folder = 'references/A_01fld07'
 
 #customizes output information for the video
-video_name = '1-7-alt_alg.mp4' 
+video_name = 'broken_alg_1-7-alt_alg.mp4' 
 fps = 7
 green = [0,255,0]
 red = [0,0,255]
@@ -50,9 +49,9 @@ blue = [255, 0, 0]
 
 #tells program where to find csv info
 #currently using the cnn_dt8 algorithim
-raw_csv_file = "csv_files/spots_velocity.csv"
-alg_csv_file = "csv_files/A_01fld07.csv" #trackmate_kf_dt6.csv file
-interval = 8
+raw_csv_file = "csv_files/1-7/spots_velocity.csv"
+alg_csv_file = "csv_files/1-7/A_01fld07.csv" #trackmate_dt4 file
+interval = 4
 
 #gathers csv data into dictionaries
 cell_data_dict = csv_scanner(raw_csv_file)
@@ -71,12 +70,8 @@ height = frame.shape[0]
 fourcc = cv2.VideoWriter_fourcc(*'mp4v')
 video = cv2.VideoWriter(os.path.join('../output/output_videos', video_name), fourcc, fps, (width,height))
 
-#runs through number in range
-#does this as opposed to looping through every image in folder
-#could this be fixed?
-
 loop_count = 0
-buffer_ct = 5
+buffer_ct = 3
 draw_list = []
 
 
@@ -92,9 +87,9 @@ for image_num in range(image_qt):
     for item in cell_data_dict[image_num]:  
         #parameters: image, center of circle, radius, color, thickness
         cell_coords = (int(item.pos_x), int(item.pos_y))
-        #cv2.circle(img, cell_coords, 5, green, -1)
+        cv2.circle(img, cell_coords, 5, green, -1)
          
-              
+            
     list_of_pairs = []
     for item in alg_data_dict[int(image_num/interval)]:  
         #parameters: image, center of circle, radius, color, thickness
@@ -102,26 +97,19 @@ for image_num in range(image_qt):
         cell_predict = ((int(item.pos_x)+int(item.velocity_x_8)), (int(item.pos_y)+int(item.velocity_y_8)))
         predict_pair = (cell_coords, cell_predict)
         list_of_pairs.append(predict_pair)
-
+    
     if list_of_pairs not in draw_list:
         if len(draw_list) >= buffer_ct:
             draw_list.pop(0)
         draw_list.append(list_of_pairs) 
 
-    color_fade = 30
     for list in draw_list:
-        #red[2] = 255
         for item in list:
             cv2.line(img, item[0], item[1], red, 5)
-            #red[2] = red[2] - color_fade
     
-    #for every object in a given frame
-    for item in cell_data_dict[image_num]:  
-        cell_coords = (int(item.pos_x), int(item.pos_y))
-        cv2.circle(img, cell_coords, 5, green, -1)
     
     loop_count = loop_count + 1
-
+    
     cv2.imwrite(os.path.join(parent_directory, 'output/marked/marked_'+ image_name), img)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
